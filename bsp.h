@@ -1,7 +1,8 @@
 #ifndef BSP_H
 #define BSP_H
 
-#include <stdint.h>                                                                                                                                         
+#include <stdint.h>
+#include <stdbool.h>                                                                                                                                         
 
 #define BSP_TICKS_PER_SEC 1000U
 
@@ -13,5 +14,6 @@ typedef uint8_t u8;
 u32 BSP_getTicks(void);
 void BSP_init(void);
 void BSP_servoSetPulse(u16 pulse_us);
+bool BSP_buttonPressed(void);
 
 #endif

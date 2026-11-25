@@ -4,10 +4,21 @@
 #include "stm32c0xx.h"
 
 static volatile u32 tickCounter = 0U;
+static volatile bool buttonPressed = false;
 
 void SysTick_Handler(void)
 {
     tickCounter++;
+}
+
+void EXTI4_15_IRQHandler(void)
+{
+    if(EXTI->FPR1 & (1U << 13))
+    {
+        EXTI->FPR1 = (1U << 13);
+
+        buttonPressed = true;
+    }
 }
 
 u32 BSP_getTicks(void)
@@ -45,6 +56,22 @@ void BSP_servoInit(void)
     TIM3->CR1 |= TIM_CR1_CEN_Msk; //enable counter
 }
 
+void BSP_EXTI_init(void)
+{
+    RCC->IOPENR |= RCC_IOPENR_GPIOCEN; //enable gpioc
+    GPIOC->MODER &= ~(GPIO_MODER_MODE13_Msk); //set pc13 to input
+    GPIOC->PUPDR &= ~(GPIO_PUPDR_PUPD13_Msk); //clear pull-up/pull-down
+    GPIOC->PUPDR |= (GPIO_PUPDR_PUPD13_0); //set pull-up
+    EXTI->EXTICR[3] &= ~(0xFFU << 8);
+    EXTI->EXTICR[3] |=  (0x2U << 8);
+    EXTI->RTSR1 &= ~(1U << 13);
+    EXTI->FTSR1 |= (1U << 13);
+    EXTI->FPR1 = (1U << 13);
+    EXTI->IMR1 |= (1u << 13);
+
+    NVIC_EnableIRQ(EXTI4_15_IRQn);
+}
+
 void BSP_servoSetPulse(u16 pulse_us)
 {
     TIM3->CCR1 = pulse_us;
@@ -55,4 +82,20 @@ void BSP_init(void)
     UART_init();
     SysTick_init();
     BSP_servoInit();
+    BSP_EXTI_init();
+}
+
+bool BSP_buttonPressed(void)
+{
+    bool pressed;
+
+    u32 primask = __get_PRIMASK();
+    __disable_irq();
+
+    pressed = buttonPressed;
+    buttonPressed = false;
+
+    __set_PRIMASK(primask);
+
+    return pressed;
 }
